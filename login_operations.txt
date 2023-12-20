@@ -1,1 +1,1 @@
-GET /api/v1/login
+POST /client/users/login

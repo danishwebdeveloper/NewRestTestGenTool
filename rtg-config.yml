@@ -1,2 +1,2 @@
-apiUnderTest: osdb
-strategyClassName: CredentialStuffingSecurityTestingStrategy
+apiUnderTest: Tradematic
+strategyClassName: CredentialStuffingStrategy

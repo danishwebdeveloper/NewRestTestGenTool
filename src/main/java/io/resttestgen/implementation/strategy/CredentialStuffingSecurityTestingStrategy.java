@@ -2,7 +2,6 @@ package io.resttestgen.implementation.strategy;
 
 import io.resttestgen.core.Environment;
 import io.resttestgen.core.datatype.HttpStatusCode;
-import io.resttestgen.core.datatype.OperationSemantics;
 import io.resttestgen.core.openapi.Operation;
 import io.resttestgen.core.testing.*;
 import io.resttestgen.implementation.fuzzer.NominalFuzzer;
@@ -63,11 +62,11 @@ public class CredentialStuffingSecurityTestingStrategy extends Strategy {
         }
     }
 
-    public List<Operation> filterLoginOperations(List<Operation> operations) {
+    public static List<Operation> filterLoginOperations(List<Operation> operations) {
         List<Operation> result = new ArrayList<>();
         // Filtering algorithm
         for (Operation operation : operations) {
-            if (operation.getCrudSemantics() == OperationSemantics.LOG_IN) {
+            if (operation.toString().toLowerCase().contains("login")) {
                 result.add(operation);
             }
         }

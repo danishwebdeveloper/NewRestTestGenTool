@@ -2,7 +2,7 @@ package io.resttestgen.implementation.strategy;
 
 import io.resttestgen.core.Environment;
 import io.resttestgen.core.datatype.HttpStatusCode;
-import io.resttestgen.core.datatype.OperationSemantics;
+import io.resttestgen.core.datatype.parameter.Parameter;
 import io.resttestgen.core.datatype.parameter.leaves.LeafParameter;
 import io.resttestgen.core.openapi.Operation;
 import io.resttestgen.core.testing.Strategy;
@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static io.resttestgen.implementation.strategy.CredentialStuffingSecurityTestingStrategy.filterLoginOperations;
+
 public class PasswordBruteForceSecurityTestingStrategy extends Strategy {
 
     private static final Logger logger = LogManager.getLogger(PasswordBruteForceSecurityTestingStrategy.class);
@@ -27,46 +29,33 @@ public class PasswordBruteForceSecurityTestingStrategy extends Strategy {
     private static final int MAX_LOGIN_ATTEMPTS = 10;
 
     public void start() {
-
         TestRunner runner = TestRunner.getInstance();
         runner.removeInvalidStatusCode(new HttpStatusCode(429));
 
         List<Operation> operations = Environment.getInstance().getOpenAPI()
-                .getOperations().stream()
-                .filter(operation -> operation.getCrudSemantics() == OperationSemantics.LOG_IN)
-                .collect(Collectors.toList());
-
-        if (operations.isEmpty()) {
+                .getOperations().stream().collect(Collectors.toList());
+        List<Operation> loginOperations = filterLoginOperations(operations);
+        if (loginOperations.isEmpty()) {
             System.out.println("No LOG_IN operations found in the OpenAPI documentation.");
             return;
         }
-
-        for (Operation operation : operations) {
+        for (Operation operation : loginOperations) {
             TestSequence attemptsSequence = new TestSequence();
-
             for (int j = 0; j < MAX_LOGIN_ATTEMPTS; j++) {
                 NominalFuzzer nominalFuzzer = new NominalFuzzer(operation);
                 TestSequence sequence = nominalFuzzer.generateTestSequences(1).get(0);
-
-                // Injecting only the static username, keeping automatic password untouched for NominalFuzzer to set
-                List<LeafParameter> leaves = (List<LeafParameter>) sequence.get(0).getFuzzedOperation().getLeaves();
-                for (LeafParameter leafParam : leaves) {
-                    String paramNameLower = leafParam.getName().toString().toLowerCase();
-                    if (paramNameLower.contains("username") || paramNameLower.contains("email") || paramNameLower.contains("userid")
-                            || paramNameLower.contains("realm") || paramNameLower.contains("login") || paramNameLower.contains("name") || paramNameLower.contains("operationId"))
-                    {
-                        leafParam.setValue(STATIC_USERNAME);
-                    }
+                // Find the user ID parameter
+                Parameter userIdParam = findUserIdParameter((List<LeafParameter>) sequence.get(0).getFuzzedOperation().getLeaves());
+                if (userIdParam != null && userIdParam instanceof LeafParameter) {
+                    ((LeafParameter) userIdParam).setValue(STATIC_USERNAME);
                 }
                 attemptsSequence.append(sequence);
             }
-
             runner.run(attemptsSequence);
             StatusCodeOracle statusCodeOracle = new StatusCodeOracle();
             statusCodeOracle.assertTestSequence(attemptsSequence);
             BlockStatusCodeOracle blockStatusCodeOracle = new BlockStatusCodeOracle();
             blockStatusCodeOracle.assertTestSequence(attemptsSequence);
-
             try {
                 ReportWriter reportWriter = new ReportWriter(attemptsSequence);
                 reportWriter.write();
@@ -77,5 +66,17 @@ public class PasswordBruteForceSecurityTestingStrategy extends Strategy {
                 e.printStackTrace();
             }
         }
+    }
+
+    public static Parameter findUserIdParameter(List<LeafParameter> leaves) {
+        for (LeafParameter leafParam : leaves) {
+            String paramNameLower = leafParam.getName().toString().toLowerCase();
+            if (paramNameLower.contains("username") || paramNameLower.contains("email")
+                    || paramNameLower.contains("userid") || paramNameLower.contains("login")
+                    || paramNameLower.contains("name")) {
+                return leafParam;
+            }
+        }
+        return null;
     }
 }
