@@ -218,6 +218,10 @@ public class ApiUnderTest {
     public AuthenticationInfo getAuthenticationInfo(String description) {
         return authenticationInfoMap.get(description);
     }
+    
+    public void putAuthenticationInfo(String description, AuthenticationInfo authenticationInfo) {
+        authenticationInfoMap.put(description, authenticationInfo);
+    }
 
     /**
      * Gets the default AuthenticationInfo for the API, i.e., the one with "default" as description. In case no

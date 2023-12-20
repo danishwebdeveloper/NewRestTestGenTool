@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Player Swap</title>
+	<style type="text/css">
+		body {
+			background-color: #e6e6e6;
+			font-family: sans-serif;
+		}
+
+		h1 {
+			text-align: center;
+			margin-top: 50px;
+		}
+
+		.container {
+			margin: 0 auto;
+			width: 80%;
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+			justify-content: space-between;
+			margin-top: 50px;
+		}
+
+		.player {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			cursor: pointer;
+		}
+
+		.player img {
+			height: 150px;
+			width: 150px;
+			object-fit: cover;
+			border-radius: 50%;
+			margin-bottom: 10px;
+		}
+
+		.player-name {
+			font-size: 20px;
+			font-weight: bold;
+		}
+
+		.coat {
+			height: 150px;
+			width: 150px;
+			background-color: #f2f2f2;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			border-radius: 50%;
+		}
+
+		.coat:hover {
+			background-color: #d9d9d9;
+		}
+
+		.coat img {
+			height: 75px;
+			width: 75px;
+			object-fit: cover;
+			margin-bottom: 10px;
+		}
+	</style>
+</head>
+<body>
+	<h1>Player Swap</h1>
+	<div class="container">
+		<div class="player">
+			<img src="https://randomuser.me/api/portraits/men/1.jpg">
+			<div class="player-name">John Doe</div>
+		</div>
+		<div class="player">
+			<img src="https://randomuser.me/api/portraits/women/2.jpg">
+			<div class="player-name">Jane Doe</div>
+		</div>
+		<div class="coat" onclick="swapPlayers()">
+			<img src="https://cdn3.iconfinder.com/data/icons/fashion-4-2/128/fashion-clothes-005-512.png">
+			<span>Swap Players</span>
+		</div>
+		<div class="player">
+			<img id="player1img" src="https://randomuser.me/api/portraits/women/3.jpg">
+			<div class="player-name" id="player1name">Emma Smith</div>
+		</div>
+		<div class="player">
+			<img id="player2img" src="https://randomuser.me/api/portraits/men/4.jpg">
+			<div class="player-name" id="player2name">William Johnson</div>
+		</div>
+	</div>
+	<script type="text/javascript">
+		function swapPlayers() {
+			const player1img = document.getElementById("player1img");
+			const player1name = document.getElementById("player1name");
+			const player2img = document.getElementById("player2img");
+			const player2name = document.getElementById("player2name");
+
+			const randomImg1 = "https://picsum.photos/seed/1/150/150";
+			const randomImg2 = "https://picsum.photos/
