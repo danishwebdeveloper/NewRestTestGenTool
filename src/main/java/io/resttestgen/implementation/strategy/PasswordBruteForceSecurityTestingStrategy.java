@@ -69,14 +69,25 @@ public class PasswordBruteForceSecurityTestingStrategy extends Strategy {
     }
 
     public static Parameter findUserIdParameter(List<LeafParameter> leaves) {
+        LeafParameter bestMatch = null;
+        int bestScore = -1; // To hold the highest score
         for (LeafParameter leafParam : leaves) {
             String paramNameLower = leafParam.getName().toString().toLowerCase();
-            if (paramNameLower.contains("username") || paramNameLower.contains("email")
-                    || paramNameLower.contains("userid") || paramNameLower.contains("login")
-                    || paramNameLower.contains("name")) {
-                return leafParam;
+            int score = scoreParameterName(paramNameLower);
+            // Update the best match if this parameter has a higher score
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = leafParam;
             }
         }
-        return null;
+        return bestMatch;
+    }
+    private static int scoreParameterName(String paramName) {
+        if (paramName.contains("username")) return 5;
+        if (paramName.contains("email")) return 4;
+        if (paramName.contains("login")) return 3;
+        if (paramName.contains("userid")) return 2;
+        if (paramName.contains("name")) return 1;
+        return 0;
     }
 }
