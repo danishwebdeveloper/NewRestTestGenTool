@@ -1,2 +1,2 @@
-apiUnderTest: Tradematic
-strategyClassName: CredentialStuffingStrategy
+apiUnderTest: nativeads
+strategyClassName: CredentialStuffingSecurityTestingStrategy
