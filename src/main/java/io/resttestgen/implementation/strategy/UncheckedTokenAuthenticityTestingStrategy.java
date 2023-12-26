@@ -21,11 +21,16 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
 
     private static final Logger logger = LogManager.getLogger(UncheckedTokenAuthenticityTestingStrategy.class);
     private final TestSequence globalNominalTestSequence = new TestSequence();
+
+    private Set<Operation> nominalSuccessfulOperations;
+    private Set<Operation> noTokenSuccessfulOperations;
+    private Set<Operation> mutatedTokenSuccessfulOperations;
 
     public void start() {
 
@@ -72,13 +77,16 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
         // Keep only successful test interactions in the sequence
         globalNominalTestSequence.filterBySuccessfulStatusCode();
 
-        TestSequence replayedTestSequence = globalNominalTestSequence.deepClone().reset();
+        // Add operations in globalNominalTestSequence to Nominal set
+        globalNominalTestSequence.stream().map(s -> nominalSuccessfulOperations.add(s.getFuzzedOperation()));
+
+        TestSequence mutatedTokenTestSequence = globalNominalTestSequence.deepClone().reset();
 
         AuthenticationInfo authenticationInfo = Environment.getInstance().getApiUnderTest().getAuthenticationInfo("default");
         String originalValue = authenticationInfo.getValue();
         TestRunner runner = TestRunner.getInstance();
 
-        for (TestInteraction testInteraction : replayedTestSequence) {
+        for (TestInteraction testInteraction : mutatedTokenTestSequence) {
             // Mutate the token
             String mutatedValue = mutateValue(originalValue);
             authenticationInfo.setValue(mutatedValue);
@@ -99,6 +107,19 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
             logger.warn("Could not write Coverage report to file.");
             e.printStackTrace();
         }
+
+        // Store successful operation of mutated token sequence to the set
+
+        // Replay the same sequence but this time remove all tokens (third time)
+
+        // Store successful interactions in the set (noTokenSuccessfulOperations)
+
+        // Compute set difference this way = WRONG TOKEN - No Token
+        // A = {"plant", "animal", "food"}
+        // set B = {"animal", "lion"},
+        // set C = A-B = {"plant", "food"}
+
+        // Print all the 3 sets and difference in those file.
     }
     private String mutateValue(String originalValue) {
         ExtendedRandom rand = Environment.getInstance().getRandom();
