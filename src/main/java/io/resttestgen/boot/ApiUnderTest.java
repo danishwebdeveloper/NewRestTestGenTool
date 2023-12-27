@@ -237,7 +237,11 @@ public class ApiUnderTest {
         }
         Map.Entry<String, AuthenticationInfo> entry = authenticationInfoMap.entrySet().iterator().next();
         return entry.getValue();
-     }
+    }
+
+    public void removeAllAuthenticationInfo() {
+        this.authenticationInfoMap = new LinkedHashMap<>();
+    }
 
     public void addAuthenticationCommand(String description, String command) {
         authenticationCommands.put(description, command);

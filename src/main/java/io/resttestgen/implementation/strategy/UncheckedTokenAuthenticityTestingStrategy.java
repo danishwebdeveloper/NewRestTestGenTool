@@ -19,6 +19,7 @@ import io.resttestgen.implementation.writer.RestAssuredWriter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -37,34 +38,23 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
         // According to the order provided by the graph, execute the nominal fuzzer
         OperationsSorter sorter = new GraphBasedOperationsSorter();
         while (!sorter.isEmpty()) {
+
             Operation operationToTest = sorter.getFirst();
             logger.debug("Testing operation " + operationToTest);
-            NominalFuzzer nominalFuzzer = new NominalFuzzer(operationToTest);
-            List<TestSequence> nominalSequences = nominalFuzzer.generateTestSequences(20);
 
-            for (TestSequence testSequence : nominalSequences) {
 
-                // Run test sequence
+            for (int i = 0; i < 50; i++) {
+                NominalFuzzer nominalFuzzer = new NominalFuzzer(operationToTest);
+                TestSequence nominalFuzzedSequence = nominalFuzzer.generateTestSequences(1).get(0);
+
                 TestRunner testRunner = TestRunner.getInstance();
-                testRunner.run(testSequence);
-                // Evaluate sequence with oracles
-                StatusCodeOracle statusCodeOracle = new StatusCodeOracle();
-                statusCodeOracle.assertTestSequence(testSequence);
-                UncheckedTokenAuthenticityStatusCodeOracle uncheckedTokenAuthenticityStatusCodeOracle = new UncheckedTokenAuthenticityStatusCodeOracle();
-                uncheckedTokenAuthenticityStatusCodeOracle.assertTestSequence(testSequence);
+                testRunner.run(nominalFuzzedSequence);
 
-                // Write report to file
-                try {
-                    ReportWriter reportWriter = new ReportWriter(testSequence);
-                    reportWriter.write();
-                    RestAssuredWriter restAssuredWriter = new RestAssuredWriter(testSequence);
-                    restAssuredWriter.write();
-                } catch (IOException e) {
-                    logger.warn("Could not write report to file.");
-                    e.printStackTrace();
+                if (nominalFuzzedSequence.get(0).getResponseStatusCode().isSuccessful()) {
+                    globalNominalTestSequence.append(nominalFuzzedSequence);
+                    break;
                 }
             }
-            globalNominalTestSequence.append(nominalSequences);
             sorter.removeFirst();
         }
 
@@ -93,34 +83,32 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
             TestSequence temp = new TestSequence();
             temp.add(testInteraction);
             runner.run(temp);
-            // Oracle will evaluate this interaction
-            StatusCodeOracle statusCodeOracle = new StatusCodeOracle();
-            statusCodeOracle.assertTestSequence(temp);
-            UncheckedTokenAuthenticityStatusCodeOracle uncheckedTokenAuthenticityStatusCodeOracle = new UncheckedTokenAuthenticityStatusCodeOracle();
-            uncheckedTokenAuthenticityStatusCodeOracle.assertTestSequence(temp);
-        }
-
-        try {
-            CoverageReportWriter coverageReportWriter = new CoverageReportWriter(TestRunner.getInstance().getCoverage());
-            coverageReportWriter.write();
-        } catch (IOException e) {
-            logger.warn("Could not write Coverage report to file.");
-            e.printStackTrace();
         }
 
         // Store successful operation of mutated token sequence to the set
+        mutatedTokenTestSequence.stream().map(s -> mutatedTokenSuccessfulOperations.add(s.getFuzzedOperation()));
+
+        // Remove authentication info
+        Environment.getInstance().getApiUnderTest().removeAllAuthenticationInfo();
 
         // Replay the same sequence but this time remove all tokens (third time)
+        TestSequence noTokenTestSequence = globalNominalTestSequence.deepClone().reset();
+        runner.run(noTokenTestSequence);
 
         // Store successful interactions in the set (noTokenSuccessfulOperations)
+        noTokenTestSequence.stream().map(s -> noTokenSuccessfulOperations.add(s.getFuzzedOperation()));
 
         // Compute set difference this way = WRONG TOKEN - No Token
-        // A = {"plant", "animal", "food"}
-        // set B = {"animal", "lion"},
-        // set C = A-B = {"plant", "food"}
+        Set<Operation> vulnerableOperations = new HashSet<>(mutatedTokenSuccessfulOperations);
+        vulnerableOperations.removeAll(noTokenSuccessfulOperations);
 
         // Print all the 3 sets and difference in those file.
+        System.out.println("Nominal: " + nominalSuccessfulOperations);
+        System.out.println("Mutated token: " + mutatedTokenSuccessfulOperations);
+        System.out.println("No token: " + noTokenSuccessfulOperations);
+        System.out.println("Vulnerable: " + vulnerableOperations);
     }
+
     private String mutateValue(String originalValue) {
         ExtendedRandom rand = Environment.getInstance().getRandom();
         int mutationType = rand.nextInt(0, 3);
