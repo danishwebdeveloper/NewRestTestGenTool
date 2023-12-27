@@ -73,7 +73,15 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
         TestSequence mutatedTokenTestSequence = globalNominalTestSequence.deepClone().reset();
 
         AuthenticationInfo authenticationInfo = Environment.getInstance().getApiUnderTest().getAuthenticationInfo("default");
+        if (authenticationInfo == null) {
+            logger.error("Authentication information is not available.");
+            return;
+        }
         String originalValue = authenticationInfo.getValue();
+        if (originalValue == null) {
+            logger.error("Original value for the token is not set.");
+            return;
+        }
         TestRunner runner = TestRunner.getInstance();
 
         for (TestInteraction testInteraction : mutatedTokenTestSequence) {
