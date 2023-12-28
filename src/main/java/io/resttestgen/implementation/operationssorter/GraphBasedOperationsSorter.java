@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 public class GraphBasedOperationsSorter extends DynamicOperationsSorter {
 
-    private int maximumAttempts = 10;
+    private int maximumAttempts = 5;
 
     private final OperationDependencyGraph graph = Environment.getInstance().getOperationDependencyGraph();
     private final ExtendedRandom random = Environment.getInstance().getRandom();

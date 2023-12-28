@@ -29,9 +29,9 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
     private static final Logger logger = LogManager.getLogger(UncheckedTokenAuthenticityTestingStrategy.class);
     private final TestSequence globalNominalTestSequence = new TestSequence();
 
-    private Set<Operation> nominalSuccessfulOperations;
-    private Set<Operation> noTokenSuccessfulOperations;
-    private Set<Operation> mutatedTokenSuccessfulOperations;
+    private Set<Operation> nominalSuccessfulOperations = new HashSet<>();
+    private Set<Operation> noTokenSuccessfulOperations = new HashSet<>();
+    private Set<Operation> mutatedTokenSuccessfulOperations = new HashSet<>();
 
     public void start() {
 
@@ -43,16 +43,18 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
             logger.debug("Testing operation " + operationToTest);
 
 
-            for (int i = 0; i < 50; i++) {
+            for (int i = 0; i < 20; i++) {
                 NominalFuzzer nominalFuzzer = new NominalFuzzer(operationToTest);
                 TestSequence nominalFuzzedSequence = nominalFuzzer.generateTestSequences(1).get(0);
 
                 TestRunner testRunner = TestRunner.getInstance();
                 testRunner.run(nominalFuzzedSequence);
 
-                if (nominalFuzzedSequence.get(0).getResponseStatusCode().isSuccessful()) {
-                    globalNominalTestSequence.append(nominalFuzzedSequence);
-                    break;
+                if (nominalFuzzedSequence.isExecuted()) {
+                    if (nominalFuzzedSequence.get(0).getResponseStatusCode().isSuccessful()) {
+                        globalNominalTestSequence.append(nominalFuzzedSequence);
+                        break;
+                    }
                 }
             }
             sorter.removeFirst();
@@ -107,7 +109,8 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
         noTokenTestSequence.stream().map(s -> noTokenSuccessfulOperations.add(s.getFuzzedOperation()));
 
         // Compute set difference this way = WRONG TOKEN - No Token
-        Set<Operation> vulnerableOperations = new HashSet<>(mutatedTokenSuccessfulOperations);
+        Set<Operation> vulnerableOperations = new HashSet<>();
+        vulnerableOperations.addAll(mutatedTokenSuccessfulOperations);
         vulnerableOperations.removeAll(noTokenSuccessfulOperations);
 
         // Print all the 3 sets and difference in those file.
