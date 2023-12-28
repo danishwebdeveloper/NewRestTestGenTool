@@ -1,6 +1,7 @@
 package io.resttestgen.implementation.strategy;
 
 import io.resttestgen.boot.AuthenticationInfo;
+import io.resttestgen.boot.Configuration;
 import io.resttestgen.core.Environment;
 import io.resttestgen.core.helper.ExtendedRandom;
 import io.resttestgen.core.openapi.Operation;
@@ -18,11 +19,15 @@ import io.resttestgen.implementation.writer.ReportWriter;
 import io.resttestgen.implementation.writer.RestAssuredWriter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import io.resttestgen.boot.Configuration;
 
 public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
 
@@ -32,6 +37,8 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
     private Set<Operation> nominalSuccessfulOperations = new HashSet<>();
     private Set<Operation> noTokenSuccessfulOperations = new HashSet<>();
     private Set<Operation> mutatedTokenSuccessfulOperations = new HashSet<>();
+    private Set<Operation> vulnerableOperations = new HashSet<>();
+    protected final Configuration configuration = Environment.getInstance().getConfiguration();
 
     public void start() {
 
@@ -43,7 +50,7 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
             logger.debug("Testing operation " + operationToTest);
 
 
-            for (int i = 0; i < 20; i++) {
+            for (int i = 0; i < 2; i++) {
                 NominalFuzzer nominalFuzzer = new NominalFuzzer(operationToTest);
                 TestSequence nominalFuzzedSequence = nominalFuzzer.generateTestSequences(1).get(0);
 
@@ -70,7 +77,7 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
         globalNominalTestSequence.filterBySuccessfulStatusCode();
 
         // Add operations in globalNominalTestSequence to Nominal set
-        globalNominalTestSequence.stream().map(s -> nominalSuccessfulOperations.add(s.getFuzzedOperation()));
+        globalNominalTestSequence.forEach(s -> nominalSuccessfulOperations.add(s.getFuzzedOperation()));
 
         TestSequence mutatedTokenTestSequence = globalNominalTestSequence.deepClone().reset();
 
@@ -96,7 +103,7 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
         }
 
         // Store successful operation of mutated token sequence to the set
-        mutatedTokenTestSequence.stream().map(s -> mutatedTokenSuccessfulOperations.add(s.getFuzzedOperation()));
+        mutatedTokenTestSequence.forEach(s -> mutatedTokenSuccessfulOperations.add(s.getFuzzedOperation()));
 
         // Remove authentication info
         Environment.getInstance().getApiUnderTest().removeAllAuthenticationInfo();
@@ -106,18 +113,35 @@ public class UncheckedTokenAuthenticityTestingStrategy extends Strategy {
         runner.run(noTokenTestSequence);
 
         // Store successful interactions in the set (noTokenSuccessfulOperations)
-        noTokenTestSequence.stream().map(s -> noTokenSuccessfulOperations.add(s.getFuzzedOperation()));
+        noTokenTestSequence.forEach(s -> noTokenSuccessfulOperations.add(s.getFuzzedOperation()));
 
         // Compute set difference this way = WRONG TOKEN - No Token
-        Set<Operation> vulnerableOperations = new HashSet<>();
-        vulnerableOperations.addAll(mutatedTokenSuccessfulOperations);
+        Set<Operation> vulnerableOperations = new HashSet<>(mutatedTokenSuccessfulOperations);
         vulnerableOperations.removeAll(noTokenSuccessfulOperations);
 
         // Print all the 3 sets and difference in those file.
-        System.out.println("Nominal: " + nominalSuccessfulOperations);
-        System.out.println("Mutated token: " + mutatedTokenSuccessfulOperations);
-        System.out.println("No token: " + noTokenSuccessfulOperations);
-        System.out.println("Vulnerable: " + vulnerableOperations);
+        writeResultsToFile();
+    }
+
+    private void writeResultsToFile() {
+        String sessionFolderPath = configuration.getOutputPath() + configuration.getTestingSessionName() + "/";
+        String filename = "successful_operations.txt";
+        String fullPath = sessionFolderPath + filename;
+        try {
+            File sessionDir = new File(sessionFolderPath);
+            if (!sessionDir.exists()) {
+                sessionDir.mkdirs();
+            }
+            // Write the results to the file
+            try (FileWriter writer = new FileWriter(fullPath)) {
+                writer.write("Nominal: " + nominalSuccessfulOperations + System.lineSeparator());
+                writer.write("Mutated token: " + mutatedTokenSuccessfulOperations + System.lineSeparator());
+                writer.write("No token: " + noTokenSuccessfulOperations + System.lineSeparator());
+                writer.write("Vulnerable: " + vulnerableOperations + System.lineSeparator());
+            }
+        } catch (IOException e) {
+            logger.error("Error writing to file: " + fullPath, e);
+        }
     }
 
     private String mutateValue(String originalValue) {
