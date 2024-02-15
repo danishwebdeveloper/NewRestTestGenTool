@@ -104,7 +104,7 @@ public class CredentialStuffingStrategy extends Strategy {
     public static LeafParameter findSecretTokenParameter(List<LeafParameter> leaves) {
         for (LeafParameter leafParam : leaves) {
             String paramNameLower = leafParam.getName().toString().toLowerCase();
-            if (paramNameLower.contains("secretToken")) {
+            if (paramNameLower.contains("token")) {
                 return leafParam;
             }
         }
