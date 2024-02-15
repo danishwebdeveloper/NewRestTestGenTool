@@ -44,21 +44,32 @@ public class CredentialStuffingStrategy extends Strategy {
         try (Stream<String> stream = Files.lines(Paths.get(CREDENTIALS_FILE))) {
             stream.forEach(credentials -> {
                 String[] parts = credentials.split(":");
-                String username = parts[0];
-                String password = parts[1];
-
+                String username = null;
+                String password = null;
+                String secretToken = null;
+                if(parts.length > 1){
+                    username = parts[0];
+                    password = parts[1];
+                }else{
+                    secretToken = parts[0];
+                }
                 for (Operation operation : loginOperations) {
                     TestSequence attemptsSequence = new TestSequence();
                     NominalFuzzer nominalFuzzer = new NominalFuzzer(operation);
                     TestSequence sequence = nominalFuzzer.generateTestSequences(1).get(0);
                     LeafParameter userIdParam = (LeafParameter) findUserIdParameter((List<LeafParameter>) sequence.get(0).getFuzzedOperation().getLeaves());
-                    if (userIdParam != null) {
+                    if (userIdParam != null && username != null) {
                         userIdParam.setValue(username);
                     }
                     LeafParameter passwordParam = findPasswordParameter((List<LeafParameter>) sequence.get(0).getFuzzedOperation().getLeaves());
-                    if (passwordParam != null) {
+                    if (passwordParam != null && password != null) {
                         passwordParam.setValue(password);
                     }
+                    LeafParameter secretTokenParam = findSecretTokenParameter((List<LeafParameter>) sequence.get(0).getFuzzedOperation().getLeaves());
+                    if (secretTokenParam != null && secretToken != null) {
+                        secretTokenParam.setValue(secretToken);
+                    }
+
                     attemptsSequence.append(sequence);
                     runner.run(attemptsSequence);
                     StatusCodeOracle statusCodeOracle = new StatusCodeOracle();
@@ -85,6 +96,15 @@ public class CredentialStuffingStrategy extends Strategy {
         for (LeafParameter leafParam : leaves) {
             String paramNameLower = leafParam.getName().toString().toLowerCase();
             if (paramNameLower.contains("password")) {
+                return leafParam;
+            }
+        }
+        return null;
+    }
+    public static LeafParameter findSecretTokenParameter(List<LeafParameter> leaves) {
+        for (LeafParameter leafParam : leaves) {
+            String paramNameLower = leafParam.getName().toString().toLowerCase();
+            if (paramNameLower.contains("secretToken")) {
                 return leafParam;
             }
         }
