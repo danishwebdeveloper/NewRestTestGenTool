@@ -46,8 +46,12 @@ public class PasswordBruteForceSecurityTestingStrategy extends Strategy {
                 TestSequence sequence = nominalFuzzer.generateTestSequences(1).get(0);
                 // Find the user ID parameter
                 Parameter userIdParam = findUserIdParameter((List<LeafParameter>) sequence.get(0).getFuzzedOperation().getLeaves());
+                LeafParameter secretTokenParam = findSecretTokenParameter((List<LeafParameter>) sequence.get(0).getFuzzedOperation().getLeaves());
                 if (userIdParam != null && userIdParam instanceof LeafParameter) {
                     ((LeafParameter) userIdParam).setValue(STATIC_USERNAME);
+                }
+                if (secretTokenParam != null) {
+                    secretTokenParam.setValue("secretrandomtoken");
                 }
                 attemptsSequence.append(sequence);
             }
@@ -89,5 +93,14 @@ public class PasswordBruteForceSecurityTestingStrategy extends Strategy {
         if (paramName.contains("userid")) return 2;
         if (paramName.contains("name")) return 1;
         return 0;
+    }
+
+    public static LeafParameter findSecretTokenParameter(List<LeafParameter> leaves) {
+        for (LeafParameter leafParam : leaves) {
+            if (leafParam.getName().toString().toLowerCase().contains("token")) {
+                return leafParam;
+            }
+        }
+        return null;
     }
 }
